@@ -14,7 +14,7 @@ SECRET_KEY  = os.environ["COUPANG_SECRET_KEY"]
 BOT_TOKEN   = os.environ["TELEGRAM_BOT_TOKEN"]
 CHAT_ID     = os.environ["TELEGRAM_CHAT_ID"]
 
-BASE_URL = "https://api.coupang.com"
+BASE_URL = "https://api-gateway.coupang.com"
 
 
 def make_signature(method, path, query=""):
