@@ -8,11 +8,11 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-VENDOR_ID  = os.environ["A01346002"]
-ACCESS_KEY = os.environ["e03b02e3-e774-4734-97a0-ca4c49d1bae6"]
-SECRET_KEY = os.environ["f1f3faadc9d56ffebef268a4964fb937dd1d2c7e"]
-BOT_TOKEN  = os.environ["8659158527:AAE1QKZQd5XVY8kNQ0tFJ7vIL6mKhSNRe6c"]
-CHAT_ID    = os.environ["8570097833"]
+VENDOR_ID  = os.environ["COUPANG_VENDOR_ID"]
+ACCESS_KEY = os.environ["COUPANG_ACCESS_KEY"]
+SECRET_KEY = os.environ["COUPANG_SECRET_KEY"]
+BOT_TOKEN  = os.environ["TELEGRAM_BOT_TOKEN"]
+CHAT_ID    = os.environ["TELEGRAM_CHAT_ID"]
 
 BASE_URL = "https://api-gateway.coupang.com"
 
