@@ -44,7 +44,7 @@ def get_orders(created_at_from, created_at_to, status="INSTRUCT"):
 
 
 def get_cancels(created_at_from, created_at_to):
-    path = f"/v2/providers/seller_api/apis/api/v1/vendors/{VENDOR_ID}/returnRequests"
+    path = f"/v2/providers/openapi/apis/api/v4/vendors/{VENDOR_ID}/returnRequests"
     query = f"createdAtFrom={created_at_from}&createdAtTo={created_at_to}&maxPerPage=100"
     headers = make_signature("GET", path, query)
     res = requests.get(BASE_URL + path + "?" + query, headers=headers, timeout=30)
