@@ -8,11 +8,11 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-VENDOR_ID   = os.environ["COUPANG_VENDOR_ID"]
-ACCESS_KEY  = os.environ["COUPANG_ACCESS_KEY"]
-SECRET_KEY  = os.environ["COUPANG_SECRET_KEY"]
-BOT_TOKEN   = os.environ["TELEGRAM_BOT_TOKEN"]
-CHAT_ID     = os.environ["TELEGRAM_CHAT_ID"]
+VENDOR_ID  = os.environ["A01346002"]
+ACCESS_KEY = os.environ["e03b02e3-e774-4734-97a0-ca4c49d1bae6"]
+SECRET_KEY = os.environ["f1f3faadc9d56ffebef268a4964fb937dd1d2c7e"]
+BOT_TOKEN  = os.environ["8659158527:AAE1QKZQd5XVY8kNQ0tFJ7vIL6mKhSNRe6c"]
+CHAT_ID    = os.environ["8570097833"]
 
 BASE_URL = "https://api-gateway.coupang.com"
 
@@ -25,40 +25,50 @@ def make_signature(method, path, query=""):
         message.encode("utf-8"),
         hashlib.sha256
     ).hexdigest()
+    authorization = "CEA algorithm=HmacSHA256, access-key={}, signed-date={}, signature={}".format(
+        ACCESS_KEY, datetime_str, signature
+    )
     return {
-        "Authorization": f"CEA algorithm=HmacSHA256, access-key={ACCESS_KEY}, signed-date={datetime_str}, signature={signature}",
-        "Content-Type": "application/json;charset=UTF-8"
+        "Authorization": authorization,
+        "Content-Type": "application/json;charset=UTF-8",
+        "X-EXTENDED-TIMEOUT": "90000"
     }
 
 
-def get_orders(created_at_from, created_at_to, status="INSTRUCT"):
+def get_orders(created_at_from, created_at_to):
     path = f"/v2/providers/openapi/apis/api/v4/vendors/{VENDOR_ID}/ordersheets"
-    query = f"createdAtFrom={created_at_from}&createdAtTo={created_at_to}&status={status}&maxPerPage=100"
+    query = f"createdAtFrom={created_at_from[:10]}&createdAtTo={created_at_to[:10]}&status=INSTRUCT&maxPerPage=50"
     headers = make_signature("GET", path, query)
     res = requests.get(BASE_URL + path + "?" + query, headers=headers, timeout=30)
     if not res.ok:
         print(f"[주문 조회 오류] {res.status_code} {res.text}")
         return []
     data = res.json()
-    return data.get("data", {}).get("content", [])
+    data_body = data.get("data", [])
+    if isinstance(data_body, list):
+        return data_body
+    return data_body.get("content", [])
 
 
 def get_cancels(created_at_from, created_at_to):
     path = f"/v2/providers/openapi/apis/api/v4/vendors/{VENDOR_ID}/returnRequests"
-    query = f"createdAtFrom={created_at_from}&createdAtTo={created_at_to}&maxPerPage=100"
+    query = f"createdAtFrom={created_at_from[:10]}&createdAtTo={created_at_to[:10]}&status=UC&maxPerPage=50"
     headers = make_signature("GET", path, query)
     res = requests.get(BASE_URL + path + "?" + query, headers=headers, timeout=30)
     if not res.ok:
         print(f"[환불 조회 오류] {res.status_code} {res.text}")
         return []
     data = res.json()
-    return data.get("data", {}).get("content", [])
+    data_body = data.get("data", [])
+    if isinstance(data_body, list):
+        return data_body
+    return data_body.get("content", [])
 
 
 def parse_orders(orders):
-    total_qty    = 0
-    total_sales  = 0
-    detail_rows  = []
+    total_qty   = 0
+    total_sales = 0
+    detail_rows = []
 
     for order in orders:
         for item in order.get("orderItems", []):
@@ -104,16 +114,16 @@ def parse_cancels(cancels):
 def create_excel(today_str, sale_qty, sale_amt, sale_rows, cancel_qty, cancel_amt, cancel_rows):
     wb = Workbook()
 
-    HEADER_FILL   = PatternFill("solid", start_color="2E4057")
-    SUMMARY_FILL  = PatternFill("solid", start_color="F0F4F8")
-    HEADER_FONT   = Font(name="Arial", bold=True, color="FFFFFF", size=11)
-    TITLE_FONT    = Font(name="Arial", bold=True, size=14)
-    BODY_FONT     = Font(name="Arial", size=10)
-    SUMMARY_FONT  = Font(name="Arial", bold=True, size=11)
-    CENTER        = Alignment(horizontal="center", vertical="center")
-    LEFT          = Alignment(horizontal="left",   vertical="center")
-    THIN          = Side(border_style="thin", color="CCCCCC")
-    BORDER        = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
+    HEADER_FILL  = PatternFill("solid", start_color="2E4057")
+    SUMMARY_FILL = PatternFill("solid", start_color="F0F4F8")
+    HEADER_FONT  = Font(name="Arial", bold=True, color="FFFFFF", size=11)
+    TITLE_FONT   = Font(name="Arial", bold=True, size=14)
+    BODY_FONT    = Font(name="Arial", size=10)
+    SUMMARY_FONT = Font(name="Arial", bold=True, size=11)
+    CENTER       = Alignment(horizontal="center", vertical="center")
+    LEFT         = Alignment(horizontal="left",   vertical="center")
+    THIN         = Side(border_style="thin", color="CCCCCC")
+    BORDER       = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 
     def style_header(cell, text):
         cell.value     = text
@@ -142,14 +152,12 @@ def create_excel(today_str, sale_qty, sale_amt, sale_rows, cancel_qty, cancel_am
     ws1.merge_cells("A1:B1")
     ws1.row_dimensions[1].height = 30
 
-    ws1["A2"] = ""
-    headers_summary = [("항목", "수치")]
     summary_data = [
-        ("판매 수량 (건)",     sale_qty),
-        ("판매 매출 (원)",     sale_amt),
-        ("환불 수량 (건)",     cancel_qty),
-        ("환불 금액 (원)",     cancel_amt),
-        ("실 매출 (원)",       sale_amt - cancel_amt),
+        ("판매 수량 (건)", sale_qty),
+        ("판매 매출 (원)", sale_amt),
+        ("환불 수량 (건)", cancel_qty),
+        ("환불 금액 (원)", cancel_amt),
+        ("실 매출 (원)",   sale_amt - cancel_amt),
     ]
 
     row = 3
@@ -158,23 +166,23 @@ def create_excel(today_str, sale_qty, sale_amt, sale_rows, cancel_qty, cancel_am
     ws1.row_dimensions[row].height = 22
 
     for i, (label, value) in enumerate(summary_data, start=row + 1):
-        ws1.cell(i, 1).value     = label
-        ws1.cell(i, 1).font      = SUMMARY_FONT
-        ws1.cell(i, 1).fill      = SUMMARY_FILL
-        ws1.cell(i, 1).alignment = LEFT
-        ws1.cell(i, 1).border    = BORDER
-        ws1.cell(i, 2).value     = value
-        ws1.cell(i, 2).font      = SUMMARY_FONT
-        ws1.cell(i, 2).fill      = SUMMARY_FILL
-        ws1.cell(i, 2).alignment = CENTER
-        ws1.cell(i, 2).border    = BORDER
-        ws1.cell(i, 2).number_format = '#,##0'
-        ws1.row_dimensions[i].height = 22
+        ws1.cell(i, 1).value          = label
+        ws1.cell(i, 1).font           = SUMMARY_FONT
+        ws1.cell(i, 1).fill           = SUMMARY_FILL
+        ws1.cell(i, 1).alignment      = LEFT
+        ws1.cell(i, 1).border         = BORDER
+        ws1.cell(i, 2).value          = value
+        ws1.cell(i, 2).font           = SUMMARY_FONT
+        ws1.cell(i, 2).fill           = SUMMARY_FILL
+        ws1.cell(i, 2).alignment      = CENTER
+        ws1.cell(i, 2).border         = BORDER
+        ws1.cell(i, 2).number_format  = '#,##0'
+        ws1.row_dimensions[i].height  = 22
 
     # ---- 판매 상세 시트 ----
     ws2 = wb.create_sheet("판매 상세")
     sale_headers = ["주문번호", "상품명", "수량", "단가", "금액", "주문상태"]
-    col_widths    = [20, 40, 10, 15, 15, 15]
+    col_widths   = [20, 40, 10, 15, 15, 15]
     for col, (h, w) in enumerate(zip(sale_headers, col_widths), 1):
         ws2.column_dimensions[get_column_letter(col)].width = w
         style_header(ws2.cell(1, col), h)
@@ -269,7 +277,7 @@ if __name__ == "__main__":
     orders  = get_orders(date_from, date_to)
     cancels = get_cancels(date_from, date_to)
 
-    sale_qty, sale_amt, sale_rows     = parse_orders(orders)
+    sale_qty, sale_amt, sale_rows       = parse_orders(orders)
     cancel_qty, cancel_amt, cancel_rows = parse_cancels(cancels)
     net_sales = sale_amt - cancel_amt
 
