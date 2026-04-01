@@ -1,0 +1,30 @@
+name: Coupang Daily Report
+
+on:
+  schedule:
+    - cron: '0 1 * * *'  # 매일 한국시간 오전 10:00 (UTC 01:00)
+  workflow_dispatch:      # 수동 실행 버튼
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python 세팅
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 패키지 설치
+        run: pip install requests openpyxl
+
+      - name: 쿠팡 데이터 수집 및 전송
+        env:
+          COUPANG_VENDOR_ID:  ${{ secrets.COUPANG_VENDOR_ID }}
+          COUPANG_ACCESS_KEY: ${{ secrets.COUPANG_ACCESS_KEY }}
+          COUPANG_SECRET_KEY: ${{ secrets.COUPANG_SECRET_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python coupang_daily.py
